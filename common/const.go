@@ -18,9 +18,9 @@ const (
 
 const (
 	WorkIdPathPrefix = "/IDMaker/ID-"
-	WorkIdPath = "/IDMaker"
+	WorkIdPath       = "/IDMaker"
 )
 
 const (
-	//MaxRetryTimes = MaxWorkerID / 2
+//MaxRetryTimes = MaxWorkerID / 2
 )

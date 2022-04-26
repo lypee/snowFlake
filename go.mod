@@ -1,4 +1,4 @@
-module snowFlake
+module github.com/lypee/snowFlake
 
 go 1.16
 

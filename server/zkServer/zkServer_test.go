@@ -2,12 +2,13 @@ package zkServer
 
 import (
 	"log"
-	"snowFlake/common"
-	"snowFlake/config"
-	"snowFlake/utils"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/lypee/snowFlake/common"
+	"github.com/lypee/snowFlake/config"
+	"github.com/lypee/snowFlake/utils"
 )
 
 func init() {

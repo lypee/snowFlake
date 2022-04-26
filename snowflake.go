@@ -4,11 +4,12 @@ import (
 	"errors"
 	"os"
 	"os/signal"
-	"snowFlake/base"
-	"snowFlake/common"
-	"snowFlake/server/zkServer"
 	"sync"
 	"time"
+
+	"github.com/lypee/snowFlake/base"
+	"github.com/lypee/snowFlake/common"
+	"github.com/lypee/snowFlake/server/zkServer"
 
 	"github.com/spf13/cast"
 )
