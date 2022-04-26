@@ -1,12 +1,12 @@
-package main
+package snowFlake
 
 import (
 	"errors"
-	base "lpynnng/engineering/snowFlake/base"
-	"lpynnng/engineering/snowFlake/common"
-	"lpynnng/engineering/snowFlake/server/zkServer"
 	"os"
 	"os/signal"
+	base "snowFlake/base"
+	"snowFlake/common"
+	"snowFlake/server/zkServer"
 	"sync"
 	"time"
 
