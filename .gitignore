@@ -1,0 +1,9 @@
+.idea/
+log/
+conf/conf.ini
+bin/
+vendor/
+go.sum
+cover.out
+conf/conf.yaml
+
