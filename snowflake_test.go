@@ -1,4 +1,4 @@
-package main
+package snowFlake
 
 import (
 	"context"
