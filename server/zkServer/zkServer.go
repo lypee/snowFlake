@@ -23,11 +23,10 @@ type connOpt struct {
 
 func DefaultOpt() *connOpt {
 	return &connOpt{
-		addr:           "43.138.36.75:2181",
 		readTimeout:    3 * time.Second,
 		writeTimeout:   3 * time.Second,
 		sessionTimeout: 3 * time.Second,
-		servers:        []string{"43.138.36.75:2181"},
+		servers:        []string{},
 	}
 }
 
@@ -115,6 +114,9 @@ func (srv *ZkServer) GetWorkerIdWithPool() (id int, err error) {
 
 // GetWorkerId -
 func (srv *ZkServer) GetWorkerId() (id int, err error) {
+	if len(srv.opt.servers) < 1 {
+		return 0, common.ServersErr
+	}
 	srv.lock.Lock()
 	defer srv.lock.Unlock()
 
@@ -133,7 +135,7 @@ func (srv *ZkServer) GetWorkerId() (id int, err error) {
 		base.InfoF("retry: %d times", i)
 		workId := utils.RandomNum(0, int(common.MaxWorkerID))
 		path := common.WorkIdPathPrefix + strconv.Itoa(workId)
-		exist, _, err = c.Exists(path)
+		exist, _, err = c.Exists(path) // todo handle father node if not exist
 		if err != nil {
 			base.ErrorF("c.Exist-err:[%+v]", err, path)
 			return 0, err

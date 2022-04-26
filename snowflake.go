@@ -29,7 +29,7 @@ var (
 	wg sync.WaitGroup
 )
 
-func NewSfWorker(errCh chan error, ofs ...zkServer.ConnOptFunc) *SfWorker {
+func NewSfWorker(errCh chan error, ofs ...zkServer.ConnOptFunc) (*SfWorker, error) {
 	//config.InitConfig("conf", "/conf.yaml")
 
 	opt := zkServer.DefaultOpt()
@@ -38,7 +38,11 @@ func NewSfWorker(errCh chan error, ofs ...zkServer.ConnOptFunc) *SfWorker {
 	}
 
 	zkSrv := zkServer.NewZkServer(errCh, opt)
-	workId, _ := zkSrv.GetWorkerId()
+	workId, err := zkSrv.GetWorkerId()
+	if err != nil {
+		base.ErrorF("zkSrv.GetWorkerId-err:[%+v]", err)
+		return nil, err
+	}
 	// initialization
 	sfWorker := newWorker(int64(workId), 1, zkSrv)
 
@@ -46,7 +50,7 @@ func NewSfWorker(errCh chan error, ofs ...zkServer.ConnOptFunc) *SfWorker {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	return sfWorker
+	return sfWorker , nil
 	//go SfWorker.monitor(errCh, c)
 }
 

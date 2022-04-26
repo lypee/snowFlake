@@ -29,4 +29,5 @@ var (
 	OpErr        Err = Err{Code: 10000, Msg: "OpErr"}
 	ConnErr      Err = Err{Code: 10001, Msg: "ConnErr"}
 	StartConnErr Err = Err{Code: 10002, Msg: "StartConnErr"}
+	ServersErr   Err = Err{Code: 10003, Msg: "ServersErr"}
 )
