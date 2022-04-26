@@ -2,9 +2,9 @@ package zkServer
 
 import (
 	"log"
-	"lpynnng/engineering/snowFlake/common"
-	"lpynnng/engineering/snowFlake/config"
-	"lpynnng/engineering/snowFlake/utils"
+	"snowFlake/common"
+	"snowFlake/config"
+	"snowFlake/utils"
 	"sync"
 	"testing"
 	"time"
