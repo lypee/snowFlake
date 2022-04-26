@@ -2,9 +2,9 @@ package zkServer
 
 import (
 	"log"
-	"github.com/lypee/snowFlake/common"
-	"github.com/lypee/snowFlake/config"
-	"github.com/lypee/snowFlake/utils"
+	"snowFlake/common"
+	"snowFlake/config"
+	"snowFlake/utils"
 	"sync"
 	"testing"
 	"time"

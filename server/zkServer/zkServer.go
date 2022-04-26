@@ -1,10 +1,10 @@
 package zkServer
 
 import (
-	"github.com/lypee/snowFlake/base"
-	"github.com/lypee/snowFlake/common"
-	"github.com/lypee/snowFlake/pool"
-	"github.com/lypee/snowFlake/utils"
+	"snowFlake/base"
+	"snowFlake/common"
+	"snowFlake/pool"
+	"snowFlake/utils"
 	"strconv"
 	"sync"
 	"time"
