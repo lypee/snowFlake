@@ -207,3 +207,5 @@ func (srv *ZkServer) Shutdown() {
 	srv.RemoveAllNode(common.WorkIdPath)
 	close(srv.errCh)
 }
+
+// todo watch and delete node

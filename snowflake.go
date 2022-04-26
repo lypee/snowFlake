@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cast"
 )
 
-type Worker struct {
+type SfWorker struct {
 	zkSrv *zkServer.ZkServer
 
 	mu           sync.Mutex
@@ -26,11 +26,10 @@ type Worker struct {
 }
 
 var (
-	SfWorker *Worker
-	wg       sync.WaitGroup
+	wg sync.WaitGroup
 )
 
-func NewSfWorker(errCh chan error, ofs ...zkServer.ConnOptFunc) *Worker {
+func NewSfWorker(errCh chan error, ofs ...zkServer.ConnOptFunc) *SfWorker {
 	//config.InitConfig("conf", "/conf.yaml")
 
 	opt := zkServer.DefaultOpt()
@@ -41,19 +40,19 @@ func NewSfWorker(errCh chan error, ofs ...zkServer.ConnOptFunc) *Worker {
 	zkSrv := zkServer.NewZkServer(errCh, opt)
 	workId, _ := zkSrv.GetWorkerId()
 	// initialization
-	SfWorker = newWorker(int64(workId), 1, zkSrv)
+	sfWorker := newWorker(int64(workId), 1, zkSrv)
 
 	// start-monitor
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	return SfWorker
+	return sfWorker
 	//go SfWorker.monitor(errCh, c)
 }
 
 // newWorker 分布式情况下 通过外部配置文件或其他方式为个worker分配独立的id
 // eg: 静态配置文件、zk发号、redis发号
-func newWorker(workerID, dataCenterID int64, zkSrv *zkServer.ZkServer) *Worker {
+func newWorker(workerID, dataCenterID int64, zkSrv *zkServer.ZkServer) *SfWorker {
 	if workerID > common.MaxWorkerID || workerID < 0 {
 		workerID = common.MaxWorkerID
 	}
@@ -61,7 +60,7 @@ func newWorker(workerID, dataCenterID int64, zkSrv *zkServer.ZkServer) *Worker {
 		dataCenterID = common.MaxDataCenterID
 	}
 	//log.Println(fmt.Sprintf("newWorker,workerId:[%d] ,dataCenterId:[%d]", workerID, dataCenterID))
-	return &Worker{
+	return &SfWorker{
 		workerID:     workerID,
 		lastStamp:    0,
 		sequence:     0,
@@ -70,18 +69,18 @@ func newWorker(workerID, dataCenterID int64, zkSrv *zkServer.ZkServer) *Worker {
 	}
 }
 
-func (w *Worker) getMilliSeconds() int64 {
+func (w *SfWorker) getMilliSeconds() int64 {
 	return time.Now().UnixNano() / 1e6
 }
 
-func (w *Worker) NextID() (uint64, error) {
+func (w *SfWorker) NextID() (uint64, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	return w.nextID()
 }
 
-func (w *Worker) nextID() (uint64, error) {
+func (w *SfWorker) nextID() (uint64, error) {
 	timeStamp := w.getMilliSeconds()
 	if timeStamp < w.lastStamp {
 		return 0, errors.New("time is moving backwards,waiting until")
@@ -106,7 +105,8 @@ func (w *Worker) nextID() (uint64, error) {
 	return uint64(id), nil
 }
 
-func (w *Worker) monitor(errCh chan error, sigCh chan os.Signal) {
+// monitor -
+func (w *SfWorker) monitor(errCh chan error, sigCh chan os.Signal) {
 	for {
 		select {
 		case err := <-errCh:
