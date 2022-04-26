@@ -9,18 +9,68 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spf13/viper"
-
 	"github.com/samuel/go-zookeeper/zk"
 )
+
+type connOpt struct {
+	addr           string
+	readTimeout    time.Duration
+	writeTimeout   time.Duration
+	sessionTimeout time.Duration
+	servers        []string
+}
+
+func DefaultOpt() *connOpt {
+	return &connOpt{
+		addr:           "43.138.36.75:2181",
+		readTimeout:    3 * time.Second,
+		writeTimeout:   3 * time.Second,
+		sessionTimeout: 3 * time.Second,
+		servers:        []string{"43.138.36.75:2181"},
+	}
+}
+
+func WithAddr(addr string) ConnOptFunc {
+	return func(opt *connOpt) {
+		opt.addr = addr
+	}
+}
+
+func WithServers(servers []string) ConnOptFunc {
+	return func(opt *connOpt) {
+		opt.servers = servers
+	}
+}
+
+func WithReadTimeout(d time.Duration) ConnOptFunc {
+	return func(opt *connOpt) {
+		opt.readTimeout = d
+	}
+}
+
+func WithWriteTimeout(d time.Duration) ConnOptFunc {
+	return func(opt *connOpt) {
+		opt.writeTimeout = d
+	}
+}
+
+func WithSessionTimeout(d time.Duration) ConnOptFunc {
+	return func(opt *connOpt) {
+		opt.sessionTimeout = d
+	}
+}
+
+type ConnOptFunc func(opt *connOpt)
 
 type ZkServer struct {
 	lock  sync.RWMutex
 	errCh chan error
+	opt   *connOpt
 }
 
-func NewZkServer(errCh chan error) *ZkServer {
+func NewZkServer(errCh chan error, opt *connOpt) *ZkServer {
 	return &ZkServer{
+		opt:   opt,
 		errCh: errCh,
 	}
 }
@@ -67,8 +117,9 @@ func (srv *ZkServer) GetWorkerId() (id int, err error) {
 	srv.lock.Lock()
 	defer srv.lock.Unlock()
 
-	servers := viper.GetStringSlice("Zookeeper.Servers")
-	sessionTimeout := time.Second * viper.GetDuration("Zookeeper.SessionTimeout")
+	servers := srv.opt.servers
+	sessionTimeout := srv.opt.sessionTimeout
+
 	c, _, err := zk.Connect(servers, sessionTimeout)
 	if err != nil {
 		base.ErrorF("zk.Connect-err:[%+v]", err)

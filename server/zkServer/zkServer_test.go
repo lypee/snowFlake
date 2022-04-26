@@ -13,7 +13,8 @@ import (
 func init() {
 	config.InitConfig("../../conf", "/conf.yaml")
 	errCh := make(chan error, 3)
-	zkSrv = NewZkServer(errCh)
+	opt := DefaultOpt()
+	zkSrv = NewZkServer(errCh, opt)
 }
 
 var (
@@ -22,11 +23,11 @@ var (
 
 func TestZkServer_GetWorkIdWithPool(t *testing.T) {
 	nums := 500
-	ids := make([]int , 0 , nums)
+	ids := make([]int, 0, nums)
 	rwLock := sync.RWMutex{}
 	wg := &sync.WaitGroup{}
 	wg.Add(nums)
-	for i := 0 ; i < nums ; i++{
+	for i := 0; i < nums; i++ {
 		go func() {
 			defer wg.Done()
 			id, err := zkSrv.GetWorkerIdWithPool()
@@ -35,21 +36,21 @@ func TestZkServer_GetWorkIdWithPool(t *testing.T) {
 			}
 			rwLock.Lock()
 			defer rwLock.Unlock()
-			ids = append(ids , id)
+			ids = append(ids, id)
 		}()
 	}
 	wg.Wait()
 	time.Sleep(10 * time.Second)
-	log.Println("ids : ", ids )
+	log.Println("ids : ", ids)
 }
 
 func TestZkServer_GetWorkId(t *testing.T) {
 	nums := 1000
-	ids := make([]int , 0 , nums)
+	ids := make([]int, 0, nums)
 	rwLock := sync.RWMutex{}
 	wg := &sync.WaitGroup{}
 	wg.Add(nums)
-	for i := 0 ; i < nums ; i++{
+	for i := 0; i < nums; i++ {
 		go func() {
 			defer wg.Done()
 			id, err := zkSrv.GetWorkerId()
@@ -58,12 +59,12 @@ func TestZkServer_GetWorkId(t *testing.T) {
 			}
 			rwLock.Lock()
 			defer rwLock.Unlock()
-			ids = append(ids , id)
+			ids = append(ids, id)
 		}()
 	}
 	wg.Wait()
 	time.Sleep(10 * time.Second)
-	log.Println("ids : ", ids )
+	log.Println("ids : ", ids)
 }
 
 func TestZkServer_Test(t *testing.T) {

@@ -34,7 +34,7 @@ func BenchmarkSnowflake(b *testing.B) {
 	time.Sleep(time.Second)
 	cancel()
 	time.Sleep(time.Second)
-	log.Println("timeDiff: " ,time.Now().Unix() - startTime , " s")
+	log.Println("timeDiff: ", time.Now().Unix()-startTime, " s")
 	return
 }
 
@@ -60,4 +60,10 @@ func countMap(ctx context.Context, ch chan uint64) {
 
 		}
 	}
+}
+
+func TestNewSfWorker(t *testing.T) {
+	errCh := make(chan error, 3)
+	sf := NewSfWorker(errCh)
+	sf.NextID()
 }

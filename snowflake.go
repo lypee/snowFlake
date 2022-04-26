@@ -2,25 +2,25 @@ package main
 
 import (
 	"errors"
-	"github.com/spf13/cast"
 	base "lpynnng/engineering/snowFlake/base"
 	"lpynnng/engineering/snowFlake/common"
-	"lpynnng/engineering/snowFlake/config"
 	"lpynnng/engineering/snowFlake/server/zkServer"
 	"os"
 	"os/signal"
 	"sync"
 	"time"
+
+	"github.com/spf13/cast"
 )
 
 type Worker struct {
-	ZkSrv *zkServer.ZkServer
+	zkSrv *zkServer.ZkServer
 
 	mu           sync.Mutex
-	LastStamp    int64 // 记录上一次ID的时间戳
-	WorkerID     int64 // 该节点的ID
-	DataCenterID int64 // 该节点的 数据中心ID
-	Sequence     int64 // 当前毫秒已经生成的ID序列号(从0 开始累加) 1毫秒内最多生成4096个ID
+	lastStamp    int64 // 记录上一次ID的时间戳
+	workerID     int64 // 该节点的ID
+	dataCenterID int64 // 该节点的 数据中心ID
+	sequence     int64 // 当前毫秒已经生成的ID序列号(从0 开始累加) 1毫秒内最多生成4096个ID
 
 }
 
@@ -29,15 +29,16 @@ var (
 	wg       sync.WaitGroup
 )
 
-func init() {
-	config.InitConfig("conf", "/conf.yaml")
+func NewSfWorker(errCh chan error, ofs ...zkServer.ConnOptFunc) *Worker {
+	//config.InitConfig("conf", "/conf.yaml")
 
-	errCh := make(chan error, 3)
+	opt := zkServer.DefaultOpt()
+	for _, op := range ofs {
+		op(opt)
+	}
 
-	// zk-workerId
-	zkSrv := zkServer.NewZkServer(errCh)
+	zkSrv := zkServer.NewZkServer(errCh, opt)
 	workId, _ := zkSrv.GetWorkerId()
-
 	// initialization
 	SfWorker = newWorker(int64(workId), 1, zkSrv)
 
@@ -45,7 +46,8 @@ func init() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	go SfWorker.Monitor(errCh, c)
+	return SfWorker
+	//go SfWorker.monitor(errCh, c)
 }
 
 // newWorker 分布式情况下 通过外部配置文件或其他方式为个worker分配独立的id
@@ -59,11 +61,11 @@ func newWorker(workerID, dataCenterID int64, zkSrv *zkServer.ZkServer) *Worker {
 	}
 	//log.Println(fmt.Sprintf("newWorker,workerId:[%d] ,dataCenterId:[%d]", workerID, dataCenterID))
 	return &Worker{
-		WorkerID:     workerID,
-		LastStamp:    0,
-		Sequence:     0,
-		DataCenterID: dataCenterID,
-		ZkSrv:        zkSrv,
+		workerID:     workerID,
+		lastStamp:    0,
+		sequence:     0,
+		dataCenterID: dataCenterID,
+		zkSrv:        zkSrv,
 	}
 }
 
@@ -80,30 +82,30 @@ func (w *Worker) NextID() (uint64, error) {
 
 func (w *Worker) nextID() (uint64, error) {
 	timeStamp := w.getMilliSeconds()
-	if timeStamp < w.LastStamp {
+	if timeStamp < w.lastStamp {
 		return 0, errors.New("time is moving backwards,waiting until")
 	}
 
-	if w.LastStamp == timeStamp {
-		w.Sequence = (w.Sequence + 1) & common.MaxSequence
-		if w.Sequence == 0 {
-			for timeStamp <= w.LastStamp {
+	if w.lastStamp == timeStamp {
+		w.sequence = (w.sequence + 1) & common.MaxSequence
+		if w.sequence == 0 {
+			for timeStamp <= w.lastStamp {
 				timeStamp = w.getMilliSeconds()
 			}
 		}
 	} else {
-		w.Sequence = 0
+		w.sequence = 0
 	}
 
-	w.LastStamp = timeStamp
+	w.lastStamp = timeStamp
 	id := ((timeStamp - common.Twepoch) << common.TimeLeft) |
-		(w.DataCenterID << common.DataLeft) |
-		(w.WorkerID << common.WorkLeft) | w.Sequence
+		(w.dataCenterID << common.DataLeft) |
+		(w.workerID << common.WorkLeft) | w.sequence
 
 	return uint64(id), nil
 }
 
-func (w *Worker) Monitor(errCh chan error, sigCh chan os.Signal) {
+func (w *Worker) monitor(errCh chan error, sigCh chan os.Signal) {
 	for {
 		select {
 		case err := <-errCh:
@@ -111,7 +113,7 @@ func (w *Worker) Monitor(errCh chan error, sigCh chan os.Signal) {
 		case s := <-sigCh:
 			base.InfoF("receive signal %v", s)
 			//app.GetApplication().Close()
-			w.ZkSrv.RemoveNode(common.WorkIdPathPrefix, cast.ToString(w.WorkerID))
+			w.zkSrv.RemoveNode(common.WorkIdPathPrefix, cast.ToString(w.workerID))
 			os.Exit(0)
 		}
 	}
