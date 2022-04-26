@@ -4,7 +4,7 @@ import (
 	"errors"
 	"os"
 	"os/signal"
-	base "snowFlake/base"
+	"snowFlake/base"
 	"snowFlake/common"
 	"snowFlake/server/zkServer"
 	"sync"
