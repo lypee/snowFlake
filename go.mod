@@ -1,4 +1,4 @@
-module lpynnng/engineering/snowFlake
+module snowFlake
 
 go 1.16
 

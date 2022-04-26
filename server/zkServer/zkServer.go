@@ -1,10 +1,10 @@
 package zkServer
 
 import (
-	"lpynnng/engineering/snowFlake/base"
-	"lpynnng/engineering/snowFlake/common"
-	"lpynnng/engineering/snowFlake/pool"
-	"lpynnng/engineering/snowFlake/utils"
+	"snowFlake/base"
+	"snowFlake/common"
+	"snowFlake/pool"
+	"snowFlake/utils"
 	"strconv"
 	"sync"
 	"time"
