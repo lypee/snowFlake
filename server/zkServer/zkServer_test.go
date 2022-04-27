@@ -51,7 +51,7 @@ func TestZkServer_GetWorkIdWithPool(t *testing.T) {
 }
 
 func TestZkServer_GetWorkId(t *testing.T) {
-	nums := 1
+	nums := 100
 	ids := make([]int, 0, nums)
 	rwLock := sync.RWMutex{}
 	wg := &sync.WaitGroup{}

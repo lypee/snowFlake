@@ -16,6 +16,8 @@ func BenchmarkSnowflake(b *testing.B) {
 	length := 10000
 	ch := make(chan uint64, length+1)
 	defer close(ch)
+	errCh := make(chan error, 3)
+	sf, _ := NewSfWorker(errCh)
 
 	go countMap(sonCtx, ch)
 
@@ -25,7 +27,7 @@ func BenchmarkSnowflake(b *testing.B) {
 	for i := 0; i < nums; i++ {
 		go func() {
 			defer wg.Done()
-			id, _ := SfWorker.NextID()
+			id, _ := sf.NextID()
 			log.Println(id)
 			ch <- id
 		}()
@@ -64,6 +66,6 @@ func countMap(ctx context.Context, ch chan uint64) {
 
 func TestNewSfWorker(t *testing.T) {
 	errCh := make(chan error, 3)
-	sf := NewSfWorker(errCh)
+	sf, _ := NewSfWorker(errCh)
 	sf.NextID()
 }

@@ -132,7 +132,8 @@ func (srv *ZkServer) GetWorkerId() (id int, err error) {
 		base.ErrorF("zk.Connect-err:[%+v]", err)
 		return 0, common.StartConnErr.WithTrueErr(err)
 	}
-	var exist bool
+	var exist, createdFatherNode bool
+
 	for i := 0; i < int(common.MaxWorkerID/2); i++ {
 		base.InfoF("retry: %d times", i)
 		workId := utils.RandomNum(0, int(common.MaxWorkerID))
@@ -148,9 +149,15 @@ func (srv *ZkServer) GetWorkerId() (id int, err error) {
 		}
 		if exist {
 			// try create father node
-
 			base.InfoF("path %v exist", path)
 			continue
+		}
+		if !createdFatherNode {
+			_, err = srv.createFatherNode(path)
+			if err != nil {
+				base.InfoF("srv.createFatherNode-err:[%+v]", err, path)
+			}
+			createdFatherNode = true
 		}
 		//str, err := c.CreateProtectedEphemeralSequential(path, []byte{}, zk.WorldACL(zk.PermAll))
 		resPath, err := c.Create(path, []byte{}, zk.FlagEphemeral, zk.WorldACL(zk.PermAll))
