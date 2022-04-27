@@ -26,8 +26,11 @@ func (e *Err) WithTrueErr(err error) error {
 }
 
 var (
-	OpErr        Err = Err{Code: 10000, Msg: "OpErr"}
-	ConnErr      Err = Err{Code: 10001, Msg: "ConnErr"}
-	StartConnErr Err = Err{Code: 10002, Msg: "StartConnErr"}
-	ServersErr   Err = Err{Code: 10003, Msg: "ServersErr"}
+	OpErr          Err = Err{Code: 10000, Msg: "OpErr"}
+	ConnErr        Err = Err{Code: 10001, Msg: "ConnErr"}
+	StartConnErr   Err = Err{Code: 10002, Msg: "StartConnErr"}
+	ServersErr     Err = Err{Code: 10003, Msg: "ServersErr"}
+	InvalidPathErr Err = Err{Code: 10003, Msg: "InvalidPathErr"}
+	NodeNameErr    Err = Err{Code: 10004, Msg: "NodeNameErr"}
+	PathLengthErr  Err = Err{Code: 10005, Msg: "PathLengthErr"}
 )

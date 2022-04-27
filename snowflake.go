@@ -117,7 +117,6 @@ func (w *SfWorker) monitor(errCh chan error, sigCh chan os.Signal) {
 			base.WarningF("%v", err)
 		case s := <-sigCh:
 			base.InfoF("receive signal %v", s)
-			//app.GetApplication().Close()
 			w.zkSrv.RemoveNode(common.WorkIdPathPrefix, cast.ToString(w.workerID))
 			os.Exit(0)
 		}

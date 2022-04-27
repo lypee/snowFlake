@@ -17,7 +17,7 @@ const (
 )
 
 const (
-	WorkIdPathPrefix = "/IDMaker/ID-"
+	WorkIdPathPrefix = "/IDMaker/Id-"
 	WorkIdPath       = "/IDMaker"
 )
 
