@@ -2,6 +2,7 @@ package snowFlake
 
 import (
 	"context"
+	"github.com/lypee/snowFlake/server/zkServer"
 	"log"
 	"testing"
 	"time"
@@ -64,6 +65,6 @@ func countMap(ctx context.Context, ch chan uint64) {
 
 func TestNewSfWorker(t *testing.T) {
 	errCh := make(chan error, 3)
-	sf := NewSfWorker(errCh)
+	sf := NewSfWorker(errCh, zkServer.WithServers([]string{"your host"}))
 	sf.NextID()
 }

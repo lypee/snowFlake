@@ -1,18 +1,18 @@
 package zkServer
 
 import (
+	"github.com/lypee/snowFlake/config"
 	"log"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/lypee/snowFlake/common"
-	"github.com/lypee/snowFlake/config"
 	"github.com/lypee/snowFlake/utils"
 )
 
 func init() {
-	config.InitConfig("../../conf", "/conf.yaml")
+	config.InitConfig("../.. /conf", "/conf.yaml")
 	errCh := make(chan error, 3)
 	opt := DefaultOpt()
 	zkSrv = NewZkServer(errCh, opt)
