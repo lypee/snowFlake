@@ -29,14 +29,14 @@ var (
 	wg sync.WaitGroup
 )
 
-func NewSfWorker(errCh chan error, ofs ...zkServer.ConnOptFunc) *SfWorker {
+func NewSfWorker(ofs ...zkServer.ConnOptFunc) *SfWorker {
 	//config.InitConfig("conf", "/conf.yaml")
 
 	opt := zkServer.DefaultOpt()
 	for _, op := range ofs {
 		op(opt)
 	}
-
+	errCh := make(chan error, 3)
 	zkSrv := zkServer.NewZkServer(errCh, opt)
 	workId, _ := zkSrv.GetWorkerId()
 	// initialization
