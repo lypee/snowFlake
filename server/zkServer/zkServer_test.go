@@ -1,6 +1,7 @@
 package zkServer
 
 import (
+	"github.com/lypee/snowFlake/config"
 	"log"
 	"strconv"
 	"sync"
@@ -11,12 +12,11 @@ import (
 	"github.com/samuel/go-zookeeper/zk"
 
 	"github.com/lypee/snowFlake/common"
-	"github.com/lypee/snowFlake/config"
 	"github.com/lypee/snowFlake/utils"
 )
 
 func init() {
-	config.InitConfig("../../conf", "/conf.yaml")
+	config.InitConfig("../.. /conf", "/conf.yaml")
 	errCh := make(chan error, 3)
 	opt := DefaultOpt()
 	opt.servers = []string{"43.138.36.75:2181"}

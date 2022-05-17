@@ -2,6 +2,7 @@ package snowFlake
 
 import (
 	"context"
+	"github.com/lypee/snowFlake/server/zkServer"
 	"log"
 	"testing"
 	"time"
@@ -16,12 +17,13 @@ func BenchmarkSnowflake(b *testing.B) {
 	length := 10000
 	ch := make(chan uint64, length+1)
 	defer close(ch)
-	errCh := make(chan error, 3)
-	sf, _ := NewSfWorker(errCh)
 
 	go countMap(sonCtx, ch)
 
 	wg.Add(nums)
+	errCh := make(chan error, 3)
+	sf := NewSfWorker(errCh,
+		zkServer.WithServers([]string{"43.138.36.75:2181"}))
 	b.ResetTimer()
 	startTime := time.Now().Unix()
 	for i := 0; i < nums; i++ {
@@ -66,6 +68,6 @@ func countMap(ctx context.Context, ch chan uint64) {
 
 func TestNewSfWorker(t *testing.T) {
 	errCh := make(chan error, 3)
-	sf, _ := NewSfWorker(errCh)
+	sf := NewSfWorker(errCh, zkServer.WithServers([]string{"your host"}))
 	sf.NextID()
 }

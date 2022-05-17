@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lypee/snowFlake/utils"
-
 	"github.com/lypee/snowFlake/base"
 	"github.com/lypee/snowFlake/common"
 	"github.com/lypee/snowFlake/server/zkServer"
@@ -23,7 +21,7 @@ type SfWorker struct {
 	lastStamp    int64 // 记录上一次ID的时间戳
 	workerID     int64 // 该节点的ID
 	dataCenterID int64 // 该节点的 数据中心ID
-	sequence     int64 // 当前毫秒已经生成的ID序列号(从0 开始累加) 1毫秒内最多生成(s << common.SequenceBits )个ID
+	sequence     int64 // 当前毫秒已经生成的ID序列号(从0 开始累加) 1毫秒内最多生成4096个ID
 
 }
 
@@ -31,30 +29,24 @@ var (
 	wg sync.WaitGroup
 )
 
-func NewSfWorker(errCh chan error, ofs ...zkServer.ConnOptFunc) (*SfWorker, error) {
+func NewSfWorker(ofs ...zkServer.ConnOptFunc) *SfWorker {
 	//config.InitConfig("conf", "/conf.yaml")
 
 	opt := zkServer.DefaultOpt()
 	for _, op := range ofs {
 		op(opt)
 	}
-
+	errCh := make(chan error, 3)
 	zkSrv := zkServer.NewZkServer(errCh, opt)
-	workId, err := zkSrv.GetWorkerId()
-	if err != nil {
-		base.ErrorF("zkSrv.GetWorkerId-err:[%+v]", err)
-		return nil, err
-	}
-	// todo dataCenterId
-
+	workId, _ := zkSrv.GetWorkerId()
 	// initialization
-	sfWorker := newWorker(int64(workId), int64(utils.RandomNum(0, int(common.MaxDataCenterID))), zkSrv)
+	sfWorker := newWorker(int64(workId), 1, zkSrv)
 
 	// start-monitor
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	return sfWorker, nil
+	return sfWorker
 	//go SfWorker.monitor(errCh, c)
 }
 
@@ -121,6 +113,7 @@ func (w *SfWorker) monitor(errCh chan error, sigCh chan os.Signal) {
 			base.WarningF("%v", err)
 		case s := <-sigCh:
 			base.InfoF("receive signal %v", s)
+			//app.GetApplication().Close()
 			w.zkSrv.RemoveNode(common.WorkIdPathPrefix, cast.ToString(w.workerID))
 			os.Exit(0)
 		}
