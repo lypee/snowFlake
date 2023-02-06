@@ -24,3 +24,10 @@ const (
 const (
 //MaxRetryTimes = MaxWorkerID / 2
 )
+
+type ServerType int
+
+const (
+	ServerTypeDefault = iota
+	ServerTypeZk
+)

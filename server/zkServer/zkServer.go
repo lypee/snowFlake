@@ -7,6 +7,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/spf13/viper"
+
 	"github.com/spf13/cast"
 
 	"github.com/lypee/snowFlake/base"
@@ -26,11 +28,13 @@ type connOpt struct {
 }
 
 func DefaultOpt() *connOpt {
+	servers := viper.Get("Zookeeper.servers")
+	serverList := strings.Split(servers.(string), ";")
 	return &connOpt{
 		readTimeout:    3 * time.Second,
 		writeTimeout:   3 * time.Second,
 		sessionTimeout: 3 * time.Second,
-		servers:        []string{},
+		servers:        serverList,
 	}
 }
 

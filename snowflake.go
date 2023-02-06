@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/viper"
+
 	"github.com/lypee/snowFlake/base"
 	"github.com/lypee/snowFlake/common"
 	"github.com/lypee/snowFlake/server/zkServer"
@@ -15,14 +17,17 @@ import (
 )
 
 type SfWorker struct {
-	zkSrv *zkServer.ZkServer
-
+	srv          InternalSrv
 	mu           sync.Mutex
 	lastStamp    int64 // 记录上一次ID的时间戳
 	workerID     int64 // 该节点的ID
 	dataCenterID int64 // 该节点的 数据中心ID
 	sequence     int64 // 当前毫秒已经生成的ID序列号(从0 开始累加) 1毫秒内最多生成4096个ID
+	ServerType   common.ServerType
+}
 
+type InternalSrv struct {
+	zkSrv *zkServer.ZkServer
 }
 
 var (
@@ -36,36 +41,60 @@ func NewSfWorker(ofs ...zkServer.ConnOptFunc) *SfWorker {
 	for _, op := range ofs {
 		op(opt)
 	}
-	errCh := make(chan error, 3)
-	zkSrv := zkServer.NewZkServer(errCh, opt)
-	workId, _ := zkSrv.GetWorkerId()
-	// initialization
-	sfWorker := newWorker(int64(workId), 1, zkSrv)
 
 	// start-monitor
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
-
+	sfWorker := newWorker(1)
+	workerId, err := sfWorker.getWorkerId()
+	if err != nil {
+		base.ErrorF("sfWorker.getWorkerId err: [%+v]", err)
+	}
+	sfWorker.workerID = cast.ToInt64(workerId)
 	return sfWorker
 	//go SfWorker.monitor(errCh, c)
 }
 
+func (w *SfWorker) getWorkerId() (workerId int, err error) {
+	switch w.ServerType {
+	case common.ServerTypeZk:
+		workerId, err = w.srv.zkSrv.GetWorkerId()
+	default:
+		workerId = 1
+	} // initialization
+	if err != nil {
+		base.ErrorF("zkSrv.")
+	}
+	return
+}
+
 // newWorker 分布式情况下 通过外部配置文件或其他方式为个worker分配独立的id
 // eg: 静态配置文件、zk发号、redis发号
-func newWorker(workerID, dataCenterID int64, zkSrv *zkServer.ZkServer) *SfWorker {
-	if workerID > common.MaxWorkerID || workerID < 0 {
-		workerID = common.MaxWorkerID
+func newWorker(dataCenterID int64) *SfWorker {
+	center := viper.Get("Center.Name")
+	errCh := make(chan error, 3)
+	internalSrv := InternalSrv{}
+	var srvType common.ServerType
+	switch center {
+	case "zk":
+		opt := zkServer.DefaultOpt()
+		zkSrv := zkServer.NewZkServer(errCh, opt)
+		internalSrv.zkSrv = zkSrv
+		srvType = common.ServerTypeZk
+	default:
+		srvType = common.ServerTypeDefault
 	}
+
 	if dataCenterID > common.MaxDataCenterID || dataCenterID < 0 {
 		dataCenterID = common.MaxDataCenterID
 	}
 	//log.Println(fmt.Sprintf("newWorker,workerId:[%d] ,dataCenterId:[%d]", workerID, dataCenterID))
 	return &SfWorker{
-		workerID:     workerID,
 		lastStamp:    0,
 		sequence:     0,
 		dataCenterID: dataCenterID,
-		zkSrv:        zkSrv,
+		srv:          internalSrv,
+		ServerType:   srvType,
 	}
 }
 
@@ -114,7 +143,7 @@ func (w *SfWorker) monitor(errCh chan error, sigCh chan os.Signal) {
 		case s := <-sigCh:
 			base.InfoF("receive signal %v", s)
 			//app.GetApplication().Close()
-			w.zkSrv.RemoveNode(common.WorkIdPathPrefix, cast.ToString(w.workerID))
+			w.srv.zkSrv.RemoveNode(common.WorkIdPathPrefix, cast.ToString(w.workerID))
 			os.Exit(0)
 		}
 	}
