@@ -2,8 +2,14 @@ package zkServer
 
 import (
 	"strconv"
+	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
+
+	"github.com/spf13/viper"
+
+	"github.com/spf13/cast"
 
 	"github.com/lypee/snowFlake/base"
 	"github.com/lypee/snowFlake/common"
@@ -22,12 +28,13 @@ type connOpt struct {
 }
 
 func DefaultOpt() *connOpt {
+	servers := viper.Get("Zookeeper.servers")
+	serverList := strings.Split(servers.(string), ";")
 	return &connOpt{
-		addr:           "43.138.36.75:2181",
 		readTimeout:    3 * time.Second,
 		writeTimeout:   3 * time.Second,
 		sessionTimeout: 3 * time.Second,
-		servers:        []string{"43.138.36.75:2181"},
+		servers:        serverList,
 	}
 }
 
@@ -115,6 +122,9 @@ func (srv *ZkServer) GetWorkerIdWithPool() (id int, err error) {
 
 // GetWorkerId -
 func (srv *ZkServer) GetWorkerId() (id int, err error) {
+	if len(srv.opt.servers) < 1 {
+		return 0, common.ServersErr
+	}
 	srv.lock.Lock()
 	defer srv.lock.Unlock()
 
@@ -126,29 +136,40 @@ func (srv *ZkServer) GetWorkerId() (id int, err error) {
 		base.ErrorF("zk.Connect-err:[%+v]", err)
 		return 0, common.StartConnErr.WithTrueErr(err)
 	}
+	var exist, createdFatherNode bool
 
-	timeNow := time.Now()
-	var exist bool
 	for i := 0; i < int(common.MaxWorkerID/2); i++ {
 		base.InfoF("retry: %d times", i)
 		workId := utils.RandomNum(0, int(common.MaxWorkerID))
 		path := common.WorkIdPathPrefix + strconv.Itoa(workId)
-		exist, _, err = c.Exists(path)
+		// check path valid
+		if valid, err := srv.validatePath(path, false); !valid || err != nil {
+			base.ErrorF("validatePath-fail:[%+v]", path, err)
+		}
+		exist, _, err = c.Exists(path) // todo handle father node if not exist
 		if err != nil {
 			base.ErrorF("c.Exist-err:[%+v]", err, path)
 			return 0, err
 		}
 		if exist {
+			// try create father node
 			base.InfoF("path %v exist", path)
 			continue
 		}
-
-		_, err = c.Create(path, utils.Int64ToBytes(timeNow.Unix()), 0, zk.WorldACL(zk.PermAll))
+		if !createdFatherNode {
+			_, err = srv.createFatherNode(path)
+			if err != nil {
+				base.InfoF("srv.createFatherNode-err:[%+v]", err, path)
+			}
+			createdFatherNode = true
+		}
+		//str, err := c.CreateProtectedEphemeralSequential(path, []byte{}, zk.WorldACL(zk.PermAll))
+		resPath, err := c.Create(path, []byte{}, zk.FlagEphemeral, zk.WorldACL(zk.PermAll))
 		if err != nil {
 			base.ErrorF("set path: %v fail", path)
 			return 0, err
 		}
-		base.InfoF("set path: %v success", path)
+		base.InfoF("set path: [%+v] success", resPath, path, workId)
 		return workId, nil
 	}
 
@@ -209,3 +230,120 @@ func (srv *ZkServer) Shutdown() {
 }
 
 // todo watch and delete node
+
+// Watch -
+//func (srv *ZkServer) Watch() {
+//	servers := srv.opt.servers
+//	sessionTimeout := srv.opt.sessionTimeout
+//
+//	c, _, err := zk.Connect(servers, sessionTimeout)
+//	if err != nil {
+//		base.ErrorF("zk.Connect-err:[%+v]", err)
+//		return
+//	}
+//
+//}
+
+// 创建父节点
+func (srv *ZkServer) createFatherNode(path string) (success bool, err error) {
+	paths := strings.Split(path, "/")
+	if len(paths) < 2 {
+		return false, common.PathLengthErr
+	}
+
+	var tmpPath string
+	servers := srv.opt.servers
+	sessionTimeout := srv.opt.sessionTimeout
+
+	c, _, err := zk.Connect(servers, sessionTimeout)
+	if err != nil {
+		base.ErrorF("zk.Connect-err:[%+v]", err)
+		return false, common.StartConnErr.WithTrueErr(err)
+	}
+
+	for i := 0; i < len(paths)-1; i++ {
+		if paths[i] == "" {
+			continue
+		}
+		tmpPath = utils.SpliceString(tmpPath, "/", paths[i])
+		_, err = c.Create(tmpPath, []byte{}, 0, zk.WorldACL(zk.PermAll))
+		if err != nil {
+			base.InfoF("create-err:[%+v] ", err, tmpPath)
+			continue
+		}
+		base.InfoF("createPath-success:[%+v]", tmpPath)
+
+	}
+	base.InfoF("createFatherNode-success:[%+v]", path)
+
+	return true, nil
+}
+
+// validatePath check path is valid
+func (srv *ZkServer) validatePath(path string, isSequential bool) (bool, error) {
+	if path == "" {
+		return false, common.InvalidPathErr
+	}
+
+	if path[0] != '/' {
+		return false, common.InvalidPathErr
+	}
+
+	n := len(path)
+	if n == 1 {
+		// path is just the root
+		return false, nil
+	}
+
+	if !isSequential && path[n-1] == '/' {
+		return false, common.InvalidPathErr
+	}
+
+	// Start at rune 1 since we already know that the first character is
+	// a '/'.
+	for i, w := 1, 0; i < n; i += w {
+		r, width := utf8.DecodeRuneInString(path[i:])
+		switch {
+		case r == '\u0000':
+			return false, common.InvalidPathErr
+		case r == '/':
+			last, _ := utf8.DecodeLastRuneInString(path[:i])
+			if last == '/' {
+				return false, common.InvalidPathErr
+			}
+		case r == '.':
+			last, lastWidth := utf8.DecodeLastRuneInString(path[:i])
+
+			// Check for double dot
+			if last == '.' {
+				last, _ = utf8.DecodeLastRuneInString(path[:i-lastWidth])
+			}
+
+			if last == '/' {
+				if i+1 == n {
+					return false, common.InvalidPathErr
+				}
+
+				next, _ := utf8.DecodeRuneInString(path[i+w:])
+				if next == '/' {
+					return false, common.InvalidPathErr
+				}
+			}
+		case r >= '\u0000' && r <= '\u001f',
+			r >= '\u007f' && r <= '\u009f',
+			r >= '\uf000' && r <= '\uf8ff',
+			r >= '\ufff0' && r < '\uffff':
+			return false, common.InvalidPathErr
+		}
+		w = width
+	}
+	return true, nil
+}
+
+func (srv *ZkServer) genTrueWorkerIdByNodeName(nodeName string) (int, error) {
+	strs := strings.Split(nodeName, "-")
+	if len(strs) < 1 {
+		return 0, common.NodeNameErr
+	}
+	return cast.ToInt(strs[len(strs)-1]), nil
+}
