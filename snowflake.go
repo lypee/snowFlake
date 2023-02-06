@@ -143,7 +143,16 @@ func (w *SfWorker) monitor(errCh chan error, sigCh chan os.Signal) {
 		case s := <-sigCh:
 			base.InfoF("receive signal %v", s)
 			//app.GetApplication().Close()
-			w.srv.zkSrv.RemoveNode(common.WorkIdPathPrefix, cast.ToString(w.workerID))
+			success, err := w.srv.zkSrv.RemoveNode(common.WorkIdPathPrefix, cast.ToString(w.workerID))
+			if err != nil {
+				base.ErrorF("zkSrv.RemoveNode err:[%+v],  path:[%+v] , workerId:[%+v]", err, common.WorkIdPathPrefix, w.workerID)
+			}
+			if success {
+				base.InfoF("zkSrv.RemoveNode success:[%+v],  path:[%+v] , workerId:[%+v]", err, common.WorkIdPathPrefix, w.workerID)
+			} else {
+				base.InfoF("zkSrv.RemoveNode fail:[%+v],  path:[%+v] , workerId:[%+v]", err, common.WorkIdPathPrefix, w.workerID)
+			}
+
 			os.Exit(0)
 		}
 	}
