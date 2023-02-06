@@ -21,12 +21,15 @@ func BenchmarkSnowflake(b *testing.B) {
 	go countMap(sonCtx, ch)
 
 	wg.Add(nums)
+	errCh := make(chan error, 3)
+	sf := NewSfWorker(errCh,
+		zkServer.WithServers([]string{"43.138.36.75:2181"}))
 	b.ResetTimer()
 	startTime := time.Now().Unix()
 	for i := 0; i < nums; i++ {
 		go func() {
 			defer wg.Done()
-			id, _ := SfWorker.NextID()
+			id, _ := sf.NextID()
 			log.Println(id)
 			ch <- id
 		}()

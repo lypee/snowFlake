@@ -17,10 +17,17 @@ const (
 )
 
 const (
-	WorkIdPathPrefix = "/IDMaker/ID-"
+	WorkIdPathPrefix = "/IDMaker/Id-"
 	WorkIdPath       = "/IDMaker"
 )
 
 const (
 //MaxRetryTimes = MaxWorkerID / 2
+)
+
+type ServerType int
+
+const (
+	ServerTypeDefault = iota
+	ServerTypeZk
 )
