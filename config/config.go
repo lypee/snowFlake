@@ -16,7 +16,6 @@ func InitConfig(path, conf string) error {
 	}
 
 	viper.AutomaticEnv()
-
 	viper.SetConfigType("yaml")
 	viper.SetConfigFile(filename)
 
