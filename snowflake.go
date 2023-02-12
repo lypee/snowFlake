@@ -25,7 +25,6 @@ type SfWorker struct {
 	sequence     int64 // 当前毫秒已经生成的ID序列号(从0 开始累加) 1毫秒内最多生成4096个ID
 	ServerType   common.ServerType
 }
-
 type InternalSrv struct {
 	zkSrv *zkServer.ZkServer
 }
